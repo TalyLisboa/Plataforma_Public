@@ -8,7 +8,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 
 class LatestAdminEmployees extends BaseWidget
-{
+{   protected static ?string $heading = 'Últimos Funcionários';
     // Define a ordem de exibição do widget no painel
     protected static ?int $sort = 4;
 
