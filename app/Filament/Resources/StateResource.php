@@ -126,4 +126,9 @@ class StateResource extends Resource
             'edit' => Pages\EditState::route('/{record}/edit'),
         ];
     }
+
+    public static function canViewAny(): bool
+    {
+        return false;
+    }
 }
