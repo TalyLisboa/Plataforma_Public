@@ -13,8 +13,14 @@ class EmployeesTableSeeder extends Seeder
      */
     public function run(): void
     {
+        // Desabilita as restrições de chave estrangeira temporariamente
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
         // Limpa a tabela de employees antes de rodar o seeder
         DB::table('employees')->truncate();
+
+        // Reativa as restrições de chave estrangeira
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // Cria 100 funcionários fictícios
         Employee::factory()->count(100)->create();

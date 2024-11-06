@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Filament\App\Resources\DepartmentResource\Pages;
+namespace App\Filament\App\Resources\Control\DepartmentResource\Pages;
 
-use App\Filament\App\Resources\DepartmentResource;
+use App\Filament\App\Resources\Control\DepartmentResource;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Pages\ViewRecord;
 
-class ListDepartments extends ListRecords
+class ViewDepartment extends ViewRecord
 {
     protected static string $resource = DepartmentResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\EditAction::make(),
         ];
     }
     /**
@@ -23,6 +23,6 @@ class ListDepartments extends ListRecords
      */
     public function getTitle(): string
     {
-        return 'Listar Departamentos';
+        return 'Visualizar Departamentos';
     }
 }

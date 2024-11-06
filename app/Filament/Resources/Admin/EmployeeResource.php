@@ -209,7 +209,7 @@ class EmployeeResource extends Resource
                     ->sortable()
                     ->url(fn (Employee $record) => "mailto:{$record->email}")
                     ->openUrlInNewTab(),
-                // Substituição de BadgeColumn por TextColumn com badge()
+                // TextColumn com badge()
                 TextColumn::make('contract_type')
                     ->label('Tipo de Contrato')
                     ->badge(function ($state) {

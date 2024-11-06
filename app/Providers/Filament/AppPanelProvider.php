@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\App\Resources\Control\EmployeeResource;
+use App\Filament\App\Resources\Control\PaymentReportResource;
 use Illuminate\Support\Facades\Auth;
 use App\Filament\App\Pages\Tenancy\EditTeamProfile;
 use App\Filament\App\Pages\Tenancy\RegisterTeam;
@@ -53,12 +54,25 @@ class AppPanelProvider extends PanelProvider
                 'success' => Color::Emerald,
                 'warning' => Color::Orange,
             ])
-            ->discoverResources(in: app_path('Filament/App/Resources/Control'), for: 'App\\Filament\\App\\Resources\\Control')
-            ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
+            ->discoverResources(
+                in: app_path('Filament/App/Resources/Control'),
+                for: 'App\\Filament\\App\\Resources\\Control'
+            )
+            ->discoverResources(
+                in: app_path('Filament/App/Resources/PaymentReportResource'),
+                for: 'App\\Filament\\App\\Resources\\PaymentReportResource'
+            )
+            ->discoverPages(
+                in: app_path('Filament/App/Pages'),
+                for: 'App\\Filament\\App\\Pages'
+            )
             ->pages([
                 Pages\Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/App/Widgets'), for: 'App\\Filament\\App\\Widgets')
+            ->discoverWidgets(
+                in: app_path('Filament/App/Widgets'),
+                for: 'App\\Filament\\App\\Widgets'
+            )
             ->widgets([
                 Widgets\AccountWidget::class,
             ])

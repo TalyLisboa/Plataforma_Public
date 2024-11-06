@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             TeamUserTableSeeder::class,
             DepartmentsTableSeeder::class,
             EmployeesTableSeeder::class,
+            PaymentReportSeeder::class,
         ]);
     }
 }

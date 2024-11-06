@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\App\Resources\DepartmentResource\Pages;
+namespace App\Filament\App\Resources\Control\PaymentReportResource\Pages;
 
-use App\Filament\App\Resources\DepartmentResource;
+use App\Filament\App\Resources\Control\PaymentReportResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 
-class ViewDepartment extends ViewRecord
+class ViewPaymentsReport extends ViewRecord
 {
-    protected static string $resource = DepartmentResource::class;
+    protected static string $resource = PaymentReportResource::class;
 
     protected function getHeaderActions(): array
     {
@@ -16,6 +16,7 @@ class ViewDepartment extends ViewRecord
             Actions\EditAction::make(),
         ];
     }
+
     /**
      * Retorna o título da página traduzido.
      *
@@ -23,6 +24,6 @@ class ViewDepartment extends ViewRecord
      */
     public function getTitle(): string
     {
-        return 'Visualizar Departamentos';
+        return 'Visualizar Relatórios';
     }
 }
