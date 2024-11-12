@@ -11,28 +11,37 @@ class EditPaymentReport extends EditRecord
 {
     protected static string $resource = PaymentReportResource::class;
 
-    protected function getHeaderActions(): array{
-
+    /**
+     * Retorna as ações de cabeçalho da página.
+     *
+     * @return array
+     */
+    protected function getHeaderActions(): array
+    {
         return [
             Actions\ViewAction::make(),
             Actions\DeleteAction::make(),
         ];
     }
 
-        protected function getSavedNotification(): ?Notification
+    /**
+     * Retorna a notificação exibida após salvar o registro.
+     *
+     * @return \Filament\Notifications\Notification|null
+     */
+    protected function getSavedNotification(): ?Notification
     {
-            return Notification::make()
-            ->sucess()
+        return Notification::make()
+            ->success() 
             ->title('Relatório Atualizado!')
-            ->body('As informações do relatório foram atualizadas com sucesso');
+            ->body('As informações do relatório foram atualizadas com sucesso.');
     }
 
-
-/**
- *  Retorna o título da página traduzido
- * 
- * @return string
- */
+    /**
+     * Retorna o título da página traduzido.
+     *
+     * @return string
+     */
     public function getTitle(): string 
     {
         return 'Editar Relatório';

@@ -43,4 +43,12 @@ class Team extends Model
     {
         return $this->hasMany(Payroll::class);
     }
+
+        /**
+     * Relação com PaymentReport.
+     */
+    public function paymentReports()
+    {
+        return $this->hasMany(PaymentReport::class);
+    }
 }

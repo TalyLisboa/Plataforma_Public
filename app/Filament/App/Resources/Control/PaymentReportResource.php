@@ -8,12 +8,9 @@ use App\Filament\App\Resources\Control\PaymentReportResource\Pages\EditPaymentRe
 use App\Models\PaymentReport;
 use App\Models\Employee;
 use Filament\Forms;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\{Section, Select, TextInput, Textarea, DatePicker};
 use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\Section;
-use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\{Section as InfolistSection, TextEntry};
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -31,6 +28,9 @@ class PaymentReportResource extends Resource
     // Defina a relação de tenancy
     protected static ?string $tenantOwnershipRelationshipName = 'team';
 
+    // Defina a relação usada para tenancy
+    protected static ?string $tenantRelationshipName = 'paymentReports';
+
     public static function getModelLabel(): string
     {
         return 'Relatório de Pagamento';
@@ -43,7 +43,8 @@ class PaymentReportResource extends Resource
 
     public static function getGlobalSearchResultTitle(Model $record): string
     {
-        return "Relatório de {$record->employee->full_name} - {$record->month}/{$record->year}";
+        // Substituído 'full_name' por 'first_name' e 'last_name'
+        return "Relatório de {$record->employee->first_name} {$record->employee->last_name} - {$record->month}/{$record->year}";
     }
 
     public static function getGloballySearchableAttributes(): array
@@ -51,19 +52,56 @@ class PaymentReportResource extends Resource
         return ['employee.first_name', 'employee.last_name', 'month', 'year', 'status'];
     }
 
+    /**
+     * Função auxiliar para formatar valores monetários
+     */
+    private static function formatCurrency(?string $value): string
+    {
+        if (is_null($value) || $value === '') {
+            return 'R$ 0,00';
+        }
+        return 'R$ ' . number_format((float)$value, 2, ',', '.');
+    }
+
+    /**
+     * Função auxiliar para sanitizar valores monetários
+     */
+    private static function parseCurrency(?string $value): string
+    {
+        if (is_null($value) || $value === '') {
+            return '0.00';
+        }
+        // Remove 'R$', pontos de milhar e espaços
+        $sanitized = str_replace(['R$', '.', ' '], '', $value);
+        // Substitui vírgula por ponto para conversão
+        $sanitized = str_replace(',', '.', $sanitized);
+        // Garante que o valor tenha duas casas decimais
+        return number_format((float)$sanitized, 2, '.', '');
+    }
+
+    /**
+     * Formulário de criação/edição
+     */
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Informações do Relatório')
+                Section::make('Informações do Relatório')
                     ->schema([
                         Select::make('employee_id')
                             ->label('Funcionário')
-                            ->options(Employee::all()->pluck('full_name', 'id'))
+                            ->options(function () {
+                                return Employee::all()->mapWithKeys(function ($employee) {
+                                    // Substituído 'full_name' por 'first_name' e 'last_name'
+                                    return [$employee->id => $employee->first_name . ' ' . $employee->last_name];
+                                })->toArray();
+                            })
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->placeholder('Selecione um Funcionário'),
+                            ->placeholder('Selecione um Funcionário')
+                            ->columnSpan(2),
+
                         Select::make('month')
                             ->label('Mês')
                             ->options([
@@ -81,62 +119,129 @@ class PaymentReportResource extends Resource
                                 12 => 'Dezembro',
                             ])
                             ->required()
-                            ->placeholder('Selecione o Mês'),
+                            ->placeholder('Selecione o Mês')
+                            ->columnSpan(1),
+
                         TextInput::make('year')
                             ->label('Ano')
                             ->required()
                             ->numeric()
                             ->minValue(2000)
                             ->maxValue(2100)
-                            ->placeholder('Digite o Ano'),
+                            ->placeholder('Digite o Ano')
+                            ->columnSpan(1),
+
                         TextInput::make('amount')
                             ->label('Valor')
                             ->required()
-                            ->numeric()
                             ->prefix('R$ ')
-                            ->step('0.01')
-                            ->placeholder('Digite o Valor'),
+                            ->placeholder('Digite o Valor')
+                            ->rules([
+                                'required',
+                                'regex:/^R\$ \d{1,3}(?:\.\d{3})*,\d{2}$/', // Permite múltiplos grupos de milhar
+                            ])
+                            ->formatStateUsing(function ($state) {
+                                // Formata o valor para exibição
+                                return self::formatCurrency($state);
+                            })
+                            ->dehydrateStateUsing(function ($state) {
+                                // Sanitiza para conversão antes de salvar
+                                return self::parseCurrency($state);
+                            })
+                            ->extraAttributes([
+                                'class' => 'form-control campoTexto __tabCampo __foco money __valor',
+                                'maxlength' => '15',
+                                'autocomplete' => 'off',
+                                'tabindex' => '0',
+                            ])
+                            ->columnSpan(2)
+                            ->helperText('Formato esperado: R$ 1.234,56'),
+
+                        Select::make('payment_method')
+                            ->label('Forma de Pagamento')
+                            ->options([
+                                'transfer' => 'Transferência Bancária',
+                                'pix'      => 'Pix',
+                                'boleto'   => 'Boleto',
+                                'cheque'   => 'Cheque',
+                                'cash'     => 'Dinheiro',
+                            ])
+                            ->required()
+                            ->placeholder('Selecione a Forma de Pagamento')
+                            ->columnSpan(2),
+
                         Select::make('status')
                             ->label('Status')
                             ->options([
-                                'pendente' => 'Pendente',
-                                'pago' => 'Pago',
-                                'cancelado' => 'Cancelado',
+                                'pendente'   => 'Pendente',
+                                'pago'       => 'Pago',
+                                'cancelado'  => 'Cancelado',
                             ])
                             ->default('pendente')
                             ->required()
-                            ->placeholder('Selecione o Status'),
+                            ->placeholder('Selecione o Status')
+                            ->columnSpan(2),
                     ])
-                    ->columns(2),
-                Forms\Components\Section::make('Datas')
+                    ->columns(2)
+                    ->columnSpan('full'),
+
+                Section::make('Datas Importantes')
                     ->schema([
+                        DatePicker::make('payment_date')
+                            ->label('Data de Pagamento')
+                            ->required()
+                            ->placeholder('Selecione a Data de Pagamento')
+                            ->columnSpan(1),
+
                         DatePicker::make('created_at')
                             ->label('Criado em')
                             ->disabled()
                             ->default(now())
-                            ->visible(false),
+                            ->visible(false)
+                            ->columnSpan(1),
+
                         DatePicker::make('updated_at')
                             ->label('Atualizado em')
                             ->disabled()
                             ->default(now())
-                            ->visible(false),
+                            ->visible(false)
+                            ->columnSpan(1),
+
+                        Textarea::make('notes')
+                            ->label('Notas ou Observações')
+                            ->placeholder('Adicione notas ou observações (opcional)')
+                            ->maxLength(500)
+                            ->columnSpan(2),
                     ])
                     ->columns(2)
+                    ->columnSpan('full'),
             ]);
     }
 
+    /**
+     * Método para atualizar os cálculos utilizando bcmath (se necessário)
+     */
+    protected static function updateCalculations(callable $get, callable $set)
+    {
+        // Implemente os cálculos necessários aqui, se aplicável
+        // Este método pode ser removido se não houver cálculos automáticos
+    }
+
+    /**
+     * Tabela de listagem
+     */
     public static function table(Tables\Table $table): Tables\Table
     {
         return $table
             ->columns([
                 TextColumn::make('employee.first_name')
-                    ->label('Primeiro Nome')
+                    ->label('Funcionário')
+                    ->sortable()
                     ->searchable()
-                    ->sortable(),
-                TextColumn::make('employee.last_name')
-                    ->label('Último Nome')
-                    ->searchable()
-                    ->sortable(),
+                    ->formatStateUsing(function ($state, $record) {
+                        return $record->employee->first_name . ' ' . $record->employee->last_name;
+                    }),
+
                 TextColumn::make('month')
                     ->label('Mês')
                     ->sortable()
@@ -157,31 +262,55 @@ class PaymentReportResource extends Resource
                         ];
                         return $months[$state] ?? $state;
                     }),
+
                 TextColumn::make('year')
                     ->label('Ano')
                     ->sortable(),
+
+                TextColumn::make('payment_date')
+                    ->label('Data de Pagamento')
+                    ->date('d/m/Y')
+                    ->sortable(),
+
                 TextColumn::make('amount')
                     ->label('Valor')
                     ->money('BRL', true)
                     ->sortable(),
+
+                TextColumn::make('payment_method')
+                    ->label('Forma de Pagamento')
+                    ->sortable()
+                    ->formatStateUsing(function ($state) {
+                        $methods = [
+                            'transfer' => 'Transferência Bancária',
+                            'pix'      => 'Pix',
+                            'boleto'   => 'Boleto',
+                            'cheque'   => 'Cheque',
+                            'cash'     => 'Dinheiro',
+                        ];
+                        return $methods[$state] ?? ucfirst($state);
+                    }),
+
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge(function ($state) {
                         return match ($state) {
-                            'pendente' => 'warning',
-                            'pago' => 'success',
+                            'pendente'  => 'warning',
+                            'pago'      => 'success',
                             'cancelado' => 'danger',
-                            default => 'secondary',
+                            default      => 'secondary',
                         };
                     })
                     ->formatStateUsing(function ($state) {
                         return ucfirst($state);
                     })
                     ->sortable(),
+
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+
                 TextColumn::make('updated_at')
                     ->label('Atualizado em')
                     ->dateTime('d/m/Y H:i')
@@ -190,27 +319,29 @@ class PaymentReportResource extends Resource
             ->filters([
                 SelectFilter::make('status')
                     ->options([
-                        'pendente' => 'Pendente',
-                        'pago' => 'Pago',
-                        'cancelado' => 'Cancelado',
+                        'pendente'   => 'Pendente',
+                        'pago'       => 'Pago',
+                        'cancelado'  => 'Cancelado',
                     ])
                     ->label('Filtrar por Status'),
+
                 SelectFilter::make('month')
                     ->options([
-                        1 => 'Janeiro',
-                        2 => 'Fevereiro',
-                        3 => 'Março',
-                        4 => 'Abril',
-                        5 => 'Maio',
-                        6 => 'Junho',
-                        7 => 'Julho',
-                        8 => 'Agosto',
-                        9 => 'Setembro',
+                        1  => 'Janeiro',
+                        2  => 'Fevereiro',
+                        3  => 'Março',
+                        4  => 'Abril',
+                        5  => 'Maio',
+                        6  => 'Junho',
+                        7  => 'Julho',
+                        8  => 'Agosto',
+                        9  => 'Setembro',
                         10 => 'Outubro',
                         11 => 'Novembro',
                         12 => 'Dezembro',
                     ])
                     ->label('Filtrar por Mês'),
+
                 Tables\Filters\Filter::make('year')
                     ->form([
                         Forms\Components\TextInput::make('year_from')
@@ -279,18 +410,21 @@ class PaymentReportResource extends Resource
             ]);
     }
 
+    /**
+     * Detalhes da folha de pagamento
+     */
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist
             ->schema([
-                Section::make('Informações do Funcionário')
+                InfolistSection::make('Informações do Funcionário')
                     ->schema([
                         TextEntry::make('employee.first_name')->label('Primeiro Nome'),
                         TextEntry::make('employee.last_name')->label('Último Nome'),
                         TextEntry::make('employee.email')->label('E-mail'),
                     ])
                     ->columns(3),
-                Section::make('Detalhes do Relatório')
+                InfolistSection::make('Detalhes do Relatório')
                     ->schema([
                         TextEntry::make('month')->label('Mês')
                             ->formatStateUsing(function ($state) {
@@ -308,23 +442,46 @@ class PaymentReportResource extends Resource
                                     11 => 'Novembro',
                                     12 => 'Dezembro',
                                 ];
-                                return $months[$state] ?? $state;
+                                return $months[$state] ?? 'Mês Inválido';
                             }),
+
                         TextEntry::make('year')->label('Ano'),
+
+                        TextEntry::make('payment_date')->label('Data de Pagamento')
+                            ->formatStateUsing(fn ($state) => \Carbon\Carbon::parse($state)->format('d/m/Y')),
+
                         TextEntry::make('amount')->label('Valor')
-                            ->formatStateUsing(fn ($state) => 'R$ ' . number_format($state, 2, ',', '.')),
+                            ->formatStateUsing(fn ($state) => self::formatCurrency($state)),
+
+                        TextEntry::make('payment_method')->label('Forma de Pagamento')
+                            ->formatStateUsing(function ($state) {
+                                $methods = [
+                                    'transfer' => 'Transferência Bancária',
+                                    'pix'      => 'Pix',
+                                    'boleto'   => 'Boleto',
+                                    'cheque'   => 'Cheque',
+                                    'cash'     => 'Dinheiro',
+                                ];
+                                return $methods[$state] ?? ucfirst($state);
+                            }),
+
                         TextEntry::make('status')->label('Status')
                             ->formatStateUsing(function ($state) {
                                 $statuses = [
-                                    'pendente' => 'Pendente',
-                                    'pago' => 'Pago',
+                                    'pendente'  => 'Pendente',
+                                    'pago'      => 'Pago',
                                     'cancelado' => 'Cancelado',
                                 ];
                                 return $statuses[$state] ?? ucfirst($state);
                             }),
+
+                        TextEntry::make('notes')->label('Notas ou Observações')
+                            ->formatStateUsing(function ($state) {
+                                return $state ?? 'Nenhuma observação.';
+                            }),
                     ])
                     ->columns(2),
-                Section::make('Datas Importantes')
+                InfolistSection::make('Datas Importantes')
                     ->schema([
                         TextEntry::make('created_at')->label('Criado em')
                             ->formatStateUsing(fn ($state) => \Carbon\Carbon::parse($state)->format('d/m/Y H:i')),
@@ -335,6 +492,9 @@ class PaymentReportResource extends Resource
             ]);
     }
 
+    /**
+     * Relacionamentos (se houver)
+     */
     public static function getRelations(): array
     {
         return [
@@ -342,6 +502,9 @@ class PaymentReportResource extends Resource
         ];
     }
 
+    /**
+     * Páginas do recurso
+     */
     public static function getPages(): array
     {
         return [
